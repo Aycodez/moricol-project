@@ -1,3 +1,4 @@
+"use client";
 import { cn } from "@/util/cn";
 import Button from "../button";
 import { HeartSVG } from "../svgs";
