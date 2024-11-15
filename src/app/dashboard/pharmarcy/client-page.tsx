@@ -51,25 +51,25 @@ export default function HomePage() {
     };
 
     return (
-      <div className="w-full max-w-[870px]">
+      <div className="w-full max-w-[350px] lg:max-w-[870px]">
         <Slider {...dashboardCarouselSettings}>
           {Array(3)
             .fill("")
             .map(() => (
               <section
                 key={Math.random() * 5}
-                className="relative flex h-[282px] items-center rounded-2xl bg-[#212844] text-white"
+                className="relative flex h-[200px] items-center rounded-2xl bg-[#212844] text-white lg:h-[282px]"
               >
-                <div className="ml-16 mt-8 max-w-[339px]">
+                <div className="mt-8 max-w-[350px] lg:ml-16 lg:max-w-[339px]">
                   <h1 className="mb-4 text-xl">
                     Get the best of services with Moricol Online Pharmacy
                   </h1>
                   <ul>
-                    <li className="flex items-center gap-x-3 text-2xl font-bold">
+                    <li className="flex items-center gap-x-3 font-bold lg:text-2xl">
                       <BulletPoint />
                       Medications
                     </li>
-                    <li className="flex items-center gap-x-3 text-2xl font-bold">
+                    <li className="flex items-center gap-x-3 font-bold lg:text-2xl">
                       <BulletPoint />
                       All Consumables
                     </li>
@@ -83,7 +83,7 @@ export default function HomePage() {
                   alt="a female doctor looking at her hand"
                   height={302}
                   width={523}
-                  className="absolute bottom-0 right-0 z-10"
+                  className="absolute bottom-0 right-0 z-10 hidden lg:flex"
                 />
 
                 <SliderIndicator className="absolute bottom-6 left-16" />
@@ -279,7 +279,7 @@ export default function HomePage() {
                 View All
               </Button>
             </div>
-            <div className="w-full max-w-[1200px] pt-5">
+            <div className="max-w-screen w-full pt-5 lg:max-w-[900px]">
               {bestProducts?.data && <SliderUtil data={bestProducts.data} />}
             </div>
           </section>

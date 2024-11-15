@@ -2,11 +2,7 @@
 
 import Button from "@/components/button";
 import SummaryProductCard from "@/components/dashboard/summary-product-card";
-
-import { routes } from "@/constants/routes";
 import Image from "next/image";
-import Link from "next/link";
-
 import { useAppSelector } from "@/lib/hook";
 import { formatNaira } from "@/util/currency-format";
 import { calculateTotal } from "@/util/get-total";
@@ -15,10 +11,51 @@ import { AddressParams } from "../account/addresses/page";
 import onlinePharmacyApi from "@/api/online-pharmacy";
 import { useSession } from "next-auth/react";
 import Address from "../components/Address";
+import { useRouter } from "next/navigation";
+import { storeToLocalStorage } from "@/util/store-to-localstorage";
+import { Order, Product } from "@/lib/features/cartSlice";
 
 export default function Checkout() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [address, setAddress] = useState<AddressParams[]>([]);
+  const [link, setLink] = useState<string>("");
+  const [couponid, setCouponId] = useState<string>("");
+  const delivery_fee = 500;
+
+  const checkPrescription = (cart: Product[]) => {
+    for (let index = 0; index < cart.length; index++) {
+      if (cart[index].prescription) {
+        return true;
+      }
+    }
+    return false;
+  };
+  const handlePayment = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+
+    const order: Order = {
+      // @ts-expect-error: 'id' is not a property of 'session'
+      userid: session?.user.id,
+      total_amount: calculateTotal(cart) + delivery_fee,
+      delivery_fee,
+      prescription_needed: checkPrescription(cart),
+      couponid: couponid == "" ? null : couponid,
+      coupon_used: couponid != "",
+      // @ts-expect-error: 'id' is not a property of 'session'
+      trackingid: session?.user.id,
+      items: cart,
+      addressid: address[0]._id ?? "",
+      report: [{ name: "polie", upload: "" }],
+      nin: "",
+    };
+    storeToLocalStorage({
+      service: "onlinePharmacy",
+      toSend: order,
+      link: "/dashboard/pharmarcy",
+    });
+    router.push(link);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,9 +69,21 @@ export default function Checkout() {
           setAddress(s.data);
         })
         .catch((err) => console.log(err));
+      await onlinePharmacyApi
+        .makePayment(
+          session!,
+          // @ts-expect-error: 'id' is not a property of 'session'
+          session?.user.id,
+          session?.user.email,
+
+          1000,
+        )
+        .then((val) => setLink(val.data))
+        .catch((err) => console.log(err));
     };
     fetchData();
   }, [session]);
+  console.log(link);
   const cart = useAppSelector((state) => state.drugcart.cart);
   return (
     <main className="px-8 py-6 pb-20">
@@ -120,7 +169,7 @@ export default function Checkout() {
                 Subtotal <span>{formatNaira(calculateTotal(cart))}</span>
               </p>
               <p className="flex justify-between">
-                Delivery Fees <span>₦210 Come back to this</span>
+                Delivery Fees <span>₦{delivery_fee}</span>
               </p>
             </div>
             <div className="px-5 py-6">
@@ -144,6 +193,8 @@ export default function Checkout() {
             <input
               type="text"
               placeholder="Coupon Code"
+              value={couponid}
+              onChange={(e) => setCouponId(e.target.value)}
               className="mb-3 w-full rounded border bg-gray-100 px-5 py-3"
             />
             <Button
@@ -153,12 +204,12 @@ export default function Checkout() {
               Apply Coupon
             </Button>
           </article>
-          <Link
-            href={routes.PHARMARCYPAYMENT}
+          <Button
+            onClick={handlePayment}
             className="inline-block rounded-lg bg-primary-500 py-3 text-center font-semibold text-white"
           >
             Place Order
-          </Link>
+          </Button>
         </section>
       </div>
     </main>

@@ -11,13 +11,18 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/lib/hook";
 import { RootState } from "@/lib/store";
-import { addToCart, decrement, filterCart } from "@/lib/features/cartSlice";
+import {
+  addToCart,
+  decrement,
+  filterCart,
+  setCart,
+} from "@/lib/features/cartSlice";
 import { useSnackbar } from "notistack";
-interface Attributes {
+export interface Attributes {
   value: string;
   price: number;
 }
-interface Images {
+export interface Images {
   url: string;
   _id: string;
 }
@@ -87,6 +92,39 @@ export default function ProductPage() {
         enqueueSnackbar(err, { variant: "error" });
       });
   };
+  const handleVariantChange = (
+    productid: string,
+    price: number,
+    value: string,
+    variant_type: "size" | "brand" | "color",
+  ) => {
+    const existingItem = cart.find((item) => item.productid === productid);
+    // console.log(existingItem);
+    if (existingItem) {
+      const newCart = cart.map((item) => {
+        if (item.productid === productid) {
+          return {
+            ...item,
+            variant: item.variant.map((v) =>
+              v.variant_type == variant_type
+                ? {
+                    variant_type: variant_type,
+                    value: value,
+                    price: price,
+                  }
+                : v,
+            ),
+          };
+        } else {
+          return item;
+        }
+      });
+      dispatch(setCart(newCart));
+      // console.log(cart[0].variant);
+      // console.log("######");
+      // console.log(newCart[0].variant);
+    }
+  };
 
   const handleDecrement = () => {
     setQuantity(quantity == 0 ? quantity : quantity - 1);
@@ -103,6 +141,25 @@ export default function ProductPage() {
         coverimage: drug?.product.coverimage,
         // @ts-expect-error: id is not found
         name: drug?.product.name,
+        // @ts-expect-error: id is not found
+        prescription: drug?.product.prescription,
+        variant: [
+          {
+            variant_type: "brand",
+            value: "",
+            price: 0,
+          },
+          {
+            variant_type: "color",
+            value: "",
+            price: 0,
+          },
+          {
+            variant_type: "size",
+            value: "",
+            price: 0,
+          },
+        ],
       }),
     );
     dispatch(filterCart());
@@ -166,7 +223,7 @@ export default function ProductPage() {
               <StarSVG />
               <StarSVG />
               <StarSVG />
-              <p>{drug?.productreview}</p>
+              <p>{drug?.productreview.length}</p>
             </div>
             <p className="mb-5 text-[#2C2D33]">
               Status:{" "}
@@ -200,6 +257,14 @@ export default function ProductPage() {
                   {drug?.product.attribute.color.map((col, index) => (
                     <button
                       key={index}
+                      onClick={() =>
+                        handleVariantChange(
+                          drug?.product._id,
+                          col.price,
+                          col.value,
+                          "color",
+                        )
+                      }
                       className="flex h-8 shrink-0 items-center justify-center rounded border border-[#DEE2E2] bg-white p-2"
                     >
                       {col.value}
@@ -214,6 +279,14 @@ export default function ProductPage() {
                   {drug?.product.attribute.size.map((s, index) => (
                     <button
                       key={index}
+                      onClick={() =>
+                        handleVariantChange(
+                          drug?.product._id,
+                          s.price,
+                          s.value,
+                          "size",
+                        )
+                      }
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#DEE2E2] bg-white uppercase"
                     >
                       {s.value}
@@ -224,7 +297,7 @@ export default function ProductPage() {
             </div>
 
             {/* Cart */}
-            <div className="mb-6 flex items-center justify-between rounded border px-5 py-4">
+            <div className="mb-6 flex items-center gap-x-2 rounded border px-5 py-4">
               <p>Quantity</p>
               <div className="flex items-center gap-x-3 rounded border px-3.5 py-2 text-sm">
                 <button disabled={quantity == 0} onClick={handleDecrement}>
@@ -247,6 +320,25 @@ export default function ProductPage() {
                         coverimage: drug?.product.coverimage,
                         // @ts-expect-error: id is not found
                         name: drug?.product.name,
+                        // @ts-expect-error: id is not found
+                        prescription: drug?.product.prescription,
+                        variant: [
+                          {
+                            variant_type: "brand",
+                            value: "",
+                            price: 0,
+                          },
+                          {
+                            variant_type: "color",
+                            value: "",
+                            price: 0,
+                          },
+                          {
+                            variant_type: "size",
+                            value: "",
+                            price: 0,
+                          },
+                        ],
                       }),
                     );
                     // console.log(cart);
@@ -255,42 +347,63 @@ export default function ProductPage() {
                   +
                 </button>
               </div>
-              <Button
-                disabled={quantity > 0}
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (quantity == 0) {
-                    setQuantity(quantity + 1);
-                    dispatch(
-                      addToCart({
-                        // @ts-expect-error: id is not found
-                        price: drug?.product.price,
-                        // @ts-expect-error: id is not found
-                        subprice: drug?.product.discount_price,
-                        // @ts-expect-error: id is not found
-                        productid: drug?.product._id,
-                        quantity: quantity + 1,
-                        // @ts-expect-error: id is not found
-                        coverimage: drug?.product.coverimage,
-                        // @ts-expect-error: id is not found
-                        name: drug?.product.name,
-                      }),
-                    );
-                  }
+              <div className="mx-auto grid grid-cols-1 gap-y-4 pt-4">
+                <Button
+                  disabled={quantity > 0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (quantity == 0) {
+                      setQuantity(quantity + 1);
+                      dispatch(
+                        addToCart({
+                          // @ts-expect-error: id is not found
+                          price: drug?.product.price,
+                          // @ts-expect-error: id is not found
+                          subprice: drug?.product.discount_price,
+                          // @ts-expect-error: id is not found
+                          productid: drug?.product._id,
+                          quantity: quantity + 1,
+                          // @ts-expect-error: id is not found
+                          coverimage: drug?.product.coverimage,
+                          // @ts-expect-error: id is not found
+                          name: drug?.product.name,
+                          // @ts-expect-error: id is not found
+                          prescription: drug?.product.prescription,
+                          variant: [
+                            {
+                              variant_type: "brand",
+                              value: "",
+                              price: 0,
+                            },
+                            {
+                              variant_type: "color",
+                              value: "",
+                              price: 0,
+                            },
+                            {
+                              variant_type: "size",
+                              value: "",
+                              price: 0,
+                            },
+                          ],
+                        }),
+                      );
+                    }
 
-                  // console.log(cart);
-                }}
-                className="w-fit py-3 font-semibold"
-              >
-                Add to cart
-              </Button>
-              <button
-                onClick={saveProduct}
-                className="flex items-center gap-x-2"
-              >
-                <HeartSVG className="h-4 w-4" fill="black" />
-                <p className="text-[#2C2D33]">Add to WishList</p>
-              </button>
+                    // console.log(cart);
+                  }}
+                  className="mt-2 px-4 py-3 font-semibold"
+                >
+                  Add to cart
+                </Button>
+                <button
+                  onClick={saveProduct}
+                  className="flex items-center gap-x-2 px-4"
+                >
+                  <HeartSVG className="h-4 w-4" fill="black" />
+                  <p className="text-[#2C2D33]">Add to WishList</p>
+                </button>
+              </div>
             </div>
 
             {/* Location */}

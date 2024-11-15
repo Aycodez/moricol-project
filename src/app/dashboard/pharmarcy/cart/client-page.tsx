@@ -72,7 +72,7 @@ export default function CartPage() {
                         <td>
                           <div className="flex items-center gap-x-7">
                             <span className="text-primary-500">
-                              {c.prescritption
+                              {c.prescription
                                 ? "Verification Pending"
                                 : formatNaira(c.subprice * c.quantity!)}
                             </span>

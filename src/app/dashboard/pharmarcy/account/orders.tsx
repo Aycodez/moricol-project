@@ -2,7 +2,7 @@
 
 import onlinePharmacyApi from "@/api/online-pharmacy";
 import SummaryProductCard from "@/components/dashboard/summary-product-card";
-import { DownloadSvg } from "@/components/svgs";
+// import { DownloadSvg } from "@/components/svgs";
 import { routes } from "@/constants/routes";
 import useOrders, { OrdersProvider } from "@/hooks/useOrders";
 import { useSession } from "next-auth/react";
@@ -10,56 +10,48 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AddressParams } from "./addresses/page";
+import { convertDate } from "@/util/get-total";
 
-export interface OrderList {
-  data: [
+export interface Order {
+  createdAt: string;
+  delivery_address: AddressParams;
+  trackingid: string;
+  _id: string;
+  order_returned: boolean;
+  order_paid: boolean;
+  paymentid: string;
+  status: "delivered" | "pending" | "returned";
+  total_amount: number;
+  userid: string;
+  delivery_fee: number;
+  items: [
     {
-      createdAt: string;
-      delivery_address: AddressParams;
-      trackingid: string;
+      price: number;
+      productid: {
+        coverimage: string;
+        name: string;
+        _id: string;
+      };
+      quantity: number;
+      subprice: number;
       _id: string;
-      order_returned: boolean;
-      order_paid: boolean;
-      paymentid: string;
-      status: "delivered" | "pending" | "returned";
-      total_amount: number;
-      userid: string;
-      delivery_fee: number;
-      items: [
+      variant: [
         {
           price: number;
-          productid: {
-            coverimage: string;
-            name: string;
-          };
-          quantity: number;
-          subprice: number;
-          _id: string;
-          variant: [
-            {
-              price: number;
-              value: string;
-              variant_type: string;
-            },
-          ];
+          value: string;
+          variant_type: string;
         },
       ];
     },
   ];
 }
+export interface OrderList {
+  data: Order[];
+}
 export default function MyOrders() {
   const { data: session } = useSession();
   const [item, setItem] = useState<number>(0);
   const [orders, setOrders] = useState<OrderList | null>(null);
-  const convertDate = (date: string) => {
-    const d = new Date(date);
-    return d.toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,8 +106,12 @@ export default function MyOrders() {
 
         <ul>
           {orders?.data
-            // .sort(() => Math.random() - 0.5)
-            .slice(0, 7)
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            )
+            .slice(7, orders?.data.length)
             .map((order, i) => (
               <li
                 key={i}
@@ -297,16 +293,6 @@ export default function MyOrders() {
                 </article>
               </li>
             ))}
-
-            {/* <li>
-              <article className="rounded border border-gray-300 px-3.5 py-5">
-                <SummaryProductCard />
-                <p className="mt-5">
-                  Our <span className="text-primary-500">return policy</span>{" "}
-                  applies to this item
-                </p>
-              </article>
-            </li> */}
           </ul>
         </section>
 
@@ -333,14 +319,11 @@ export default function MyOrders() {
                 <ul className="grid gap-y-0.5">
                   <li>Items total: ₦{orders?.data[item].total_amount}</li>
                   <li>Delivery Fees: ₦{orders?.data[item].delivery_fee}</li>
-                  <li>
-                    Promotional Discount: - ₦59 Come back to add this later cos
-                    its not in the response{" "}
-                  </li>
+
                   <li>
                     Total: ₦
-                    {orders?.data[item].total_amount ??
-                      0 + (orders?.data[item].delivery_fee ?? 0)}
+                    {(orders?.data[item].total_amount ?? 0) +
+                      (orders?.data[item].delivery_fee ?? 0)}
                   </li>
                 </ul>
               </article>
@@ -353,28 +336,19 @@ export default function MyOrders() {
               </h2>
             </div>
             <div className="px-6 py-5">
-              {/* <article className="mb-5">
-                <h3 className="mb-1.5 font-bold text-primary-500">
-                  Billing Address
-                </h3>
-                <p>C Darl Uzu</p>
-                <p>Pay on Delivery</p>
-                <p>
-                  Court Estate, Durumi | Federal Capital Territory - ABUJA-
-                  DURUMI | 900103
-                </p>
-              </article> */}
-
               <article className="mb-5 capitalize">
                 <h3 className="mb-1.5 font-bold text-primary-500">
                   Delivery Address
                 </h3>
                 {/* <p className="mb-4">Pay on Delivery</p> */}
-                <p>{`${orders?.data[item].delivery_address.address} `}</p>
+                <p>{`${orders?.data[item].delivery_address.firstname} 
+                ${orders?.data[item].delivery_address.lastname} | 
+                `}</p>
 
                 <p>
-                  {`${orders?.data[item].delivery_address.city} |  
-                ${orders?.data[item].delivery_address.state} |
+                  {`${orders?.data[item].delivery_address.address ?? "Court Estate, Durumi"} | 
+                  ${orders?.data[item].delivery_address.city} -  
+                ${orders?.data[item].delivery_address.state} -
                 ${orders?.data[item].delivery_address.country} |
                 ${orders?.data[item].delivery_address.postalcode}`}
                   {/* Court Estate, Durumi | Federal Capital Territory - ABUJA-
@@ -423,14 +397,13 @@ export default function MyOrders() {
             </tr>
           </thead>
           <tbody>
-            {orders?.data[item].items.map((item, index) => (
+            {orders?.data[item].items.map((it, index) => (
               <tr key={index} className="border-b border-b-gray-100 text-xs">
                 <td className="flex items-center gap-x-7 px-6 py-3.5">
                   <div className="relative h-[75px] w-[79px] overflow-hidden text-xs">
                     <Image
                       src={
-                        item.productid.coverimage ??
-                        "/images/dashboard/drug.png"
+                        it.productid.coverimage ?? "/images/dashboard/drug.png"
                       }
                       alt=""
                       className=""
@@ -438,21 +411,32 @@ export default function MyOrders() {
                       sizes="79px"
                     />
                   </div>
-                  {item.productid.name ?? "Some drug"}
+                  {it.productid.name ?? "Some drug"}
                 </td>
-                <td className="text-primary-500">₦{item.price}</td>
+                <td className="text-primary-500">₦{it.price}</td>
                 <td className="py-3.5">
                   <div className="flex w-fit items-center gap-x-3 rounded border px-3.5 py-2">
-                    <p className="font-bold">{item.quantity}</p>
+                    <p className="font-bold">{it.quantity}</p>
                   </div>
                 </td>
                 <td>
-                  <span className="text-primary-500">{item.subprice}</span>
+                  <span className="text-primary-500">
+                    {it.quantity * it.price}
+                  </span>
                   <div className="flex justify-end gap-x-4 font-bold text-primary-500">
-                    <Link href={routes.PHARMARCYPRODUCTREVIEW}>
+                    <Link
+                      href={
+                        routes.PHARMARCYPRODUCTREVIEW + `/${it.productid._id}`
+                      }
+                    >
                       Rate this item
                     </Link>
-                    <Link href={routes.PHARMARCYRETURNPOLICY}>
+                    <Link
+                      href={
+                        routes.PHARMARCYRETURNPOLICY +
+                        `/${orders?.data[item]._id}`
+                      }
+                    >
                       Return this item
                     </Link>
                   </div>
@@ -493,44 +477,57 @@ export default function MyOrders() {
         </div>
 
         <div className="grid gap-y-6">
-          <ReturnedItemCard returnType="declined" />
-          <ReturnedItemCard returnType="approved" />
+          {orders?.data[item].items.map((item, index) => (
+            <ReturnedItemCard
+              key={index}
+              name={item.productid.name}
+              imageUrl={item.productid.coverimage}
+              total={item.quantity * item.price}
+            />
+            //  <ReturnedItemCard returnType="approved" />
+          ))}
         </div>
       </section>
     );
   }
 
   function ReturnedItemCard({
-    returnType,
+    imageUrl,
+    total,
+    name,
+    // returnType,
   }: {
-    returnType: "declined" | "approved";
+    imageUrl: string;
+    total: number;
+    name: string;
+    // returnType: "declined" | "approved";
   }) {
-    const textColor = returnType === "declined" ? "#D81302" : "#22C55E";
+    // const textColor = returnType === "declined" ? "#D81302" : "#22C55E";
     return (
       <article>
-        <p
+        {/* <p
           className="mb-1.5 text-right text-xs capitalize"
           style={{ color: textColor }}
         >
           Return {returnType}
-        </p>
+        </p> */}
         <div className="relative flex gap-x-3 rounded border border-[#CACACA] px-4 py-5 text-xs">
           <div className="relative h-[97.1px] w-[101.73px]">
-            <Image src="/images/client.jpg" alt="" fill />
+            <Image src={imageUrl ?? "/images/client.jpg"} alt="" fill />
           </div>
           <div>
             <p className="mb-1 text-[#2C2D33]">
-              L&apos;Oréal, Revitalift Triple Power, Anti-Aging{" "}
+              {name ?? "L&apos;Oréal, Revitalift Triple Power, Anti-Aging"}{" "}
             </p>
-            <p className="text-[#636985]">₦759.99</p>
+            <p className="text-[#636985]">₦{total}</p>
           </div>
 
-          {returnType === "approved" && (
+          {/* {returnType === "approved" && (
             <button className="absolute bottom-6 right-5 flex flex-col items-center rounded-lg border border-dotted border-primary-500 bg-[#F2EAEA] px-16 py-2 text-sm">
               <DownloadSvg />
               Download Receipt
             </button>
-          )}
+          )} */}
         </div>
       </article>
     );
